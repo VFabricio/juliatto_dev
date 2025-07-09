@@ -1,0 +1,10 @@
+[package]
+name = "sender"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "sender"
+path = "src/main.rs"
+
+[dependencies]

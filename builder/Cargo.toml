@@ -1,0 +1,10 @@
+[package]
+name = "builder"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "builder"
+path = "src/main.rs"
+
+[dependencies]

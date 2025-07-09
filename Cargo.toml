@@ -1,6 +1,11 @@
-[package]
-name = "juliatto_dev"
+[workspace]
+members = [
+    "server",
+    "builder",
+    "sender"
+]
+resolver = "2"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
-
-[dependencies]
