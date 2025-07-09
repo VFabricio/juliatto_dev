@@ -46,7 +46,7 @@ pub fn load_config() -> anyhow::Result<Config> {
         builder = builder.add_source(config::File::with_name("config").required(false));
     }
 
-    builder = builder.add_source(config::Environment::default());
+    builder = builder.add_source(config::Environment::default().separator("__"));
 
     let config = builder.build()?;
     let app_config: Config = config.try_deserialize()?;
