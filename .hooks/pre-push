@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+echo "Running pre-push checks..."
+
+# Check conventional commits format with cocogitto
+echo "Checking commit message format..."
+if ! cog check; then
+    echo "❌ Commit messages do not follow conventional commits format!"
+    echo "Use 'cog check' to see which commits are invalid."
+    echo "For more info: https://www.conventionalcommits.org/"
+    exit 1
+fi
+echo "✅ All commit messages follow conventional commits format"
+
+# Check code formatting
+echo "Checking code formatting..."
+if ! cargo fmt --check; then
+    echo "❌ Code formatting check failed. Run 'cargo fmt' to fix."
+    exit 1
+fi
+echo "✅ Code formatting check passed"
+
+# Check for warnings and errors
+echo "Checking for warnings and errors..."
+if ! cargo clippy -- -D warnings; then
+    echo "❌ Code has warnings or errors. Fix them before pushing."
+    exit 1
+fi
+echo "✅ No warnings or errors found"
+
+# Run tests
+echo "Running tests..."
+if ! cargo test; then
+    echo "❌ Tests failed. Fix failing tests before pushing."
+    exit 1
+fi
+echo "✅ All tests passed"
+
+echo "🎉 All pre-push checks passed!"
