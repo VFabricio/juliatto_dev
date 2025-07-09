@@ -149,3 +149,4 @@ We run Jaeger in our infrastructure for OpenTelemetry trace collection.
 
 Do not use explanatory comments.
 Run the check cargo check at the end of all interventions to make sure that nothing is broken.
+After adding any code, run cargo fmt to make sure it is formatted correctly.
