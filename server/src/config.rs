@@ -27,14 +27,44 @@ impl Environment {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ObservabilityLevel {
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+impl AsRef<str> for ObservabilityLevel {
+    fn as_ref(&self) -> &str {
+        match self {
+            ObservabilityLevel::Trace => "trace",
+            ObservabilityLevel::Debug => "debug",
+            ObservabilityLevel::Info => "info",
+            ObservabilityLevel::Warn => "warn",
+            ObservabilityLevel::Error => "error",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     pub server: ServerConfig,
+    pub observability: ObservabilityConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ObservabilityConfig {
+    pub level: ObservabilityLevel,
+    pub otlp_endpoint: String,
+    pub service_name: String,
+    pub service_version: String,
 }
 
 pub fn load_config() -> anyhow::Result<Config> {

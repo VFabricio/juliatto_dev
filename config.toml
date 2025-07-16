@@ -1,3 +1,9 @@
 [server]
 host = "127.0.0.1"
 port = 8000
+
+[observability]
+level = "debug"
+otlp_endpoint = "http://0.0.0.0:4317"
+service_name = "juliatto-dev-server"
+service_version = "0.1.0"
