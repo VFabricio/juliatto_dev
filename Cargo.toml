@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "server",
+    "builder",
+    "sender"
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"

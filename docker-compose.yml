@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.8.0
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "14268:14268"
+      - "16686:16686"
+    networks:
+      - juliatto-dev
+
+networks:
+  juliatto-dev:
+    driver: bridge
