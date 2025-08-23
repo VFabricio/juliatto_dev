@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use axum::{response::Json, routing::get, serve, Router};
+use axum::{Router, response::Json, routing::get, serve};
 use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
