@@ -1,7 +1,7 @@
 use crate::adapters::{Adapter, clock::Clock};
 use crate::cross_cutting::time::DateTime;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SystemClock {}
 
 impl SystemClock {
@@ -13,10 +13,7 @@ impl SystemClock {
 impl Adapter for SystemClock {}
 
 impl Clock for SystemClock {
-    fn now(&self) -> DateTime
-    where
-        Self: Sized,
-    {
+    fn now(&self) -> DateTime {
         DateTime::now()
     }
 }

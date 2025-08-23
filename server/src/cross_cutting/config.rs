@@ -31,12 +31,43 @@ impl Environment {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ObservabilityLevel {
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ObservabilityConfig {
+    pub endpoint: String,
+    pub level: ObservabilityLevel,
+    pub service_name: String,
+    pub service_version: String,
+}
+
+impl AsRef<str> for ObservabilityLevel {
+    fn as_ref(&self) -> &str {
+        match self {
+            ObservabilityLevel::Trace => "trace",
+            ObservabilityLevel::Debug => "debug",
+            ObservabilityLevel::Info => "info",
+            ObservabilityLevel::Warn => "warn",
+            ObservabilityLevel::Error => "error",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ServerConfig {
     pub address: SocketAddr,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
+    pub observability: ObservabilityConfig,
     pub server: ServerConfig,
 }
 
