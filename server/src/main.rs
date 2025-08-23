@@ -1,11 +1,15 @@
 mod config;
+mod ports;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use self::config::AppConfig;
+use self::ports::driven::http::start_server;
 
-fn main() -> Result<()> {
-    let config = AppConfig::load()?;
-    println!("{config:?}");
+#[tokio::main]
+async fn main() -> Result<()> {
+    let config = AppConfig::load().context("Failed to load configuration.")?;
+    let server = start_server(&config.server).await?;
+    server.await;
     Ok(())
 }

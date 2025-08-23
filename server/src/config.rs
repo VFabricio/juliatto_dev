@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use config::{Config, File};
 use serde::Deserialize;
 use std::env::var;
@@ -49,7 +49,9 @@ impl AppConfig {
         }
         builder =
             builder.add_source(config::Environment::default().separator(ENVIRONMENT_SEPARATOR));
-        let config = builder.build().context("Failed to load configuration.")?;
+        let config = builder
+            .build()
+            .context("Failed to create configuration builder.")?;
 
         config
             .try_deserialize()
