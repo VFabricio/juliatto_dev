@@ -4,7 +4,7 @@ use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
 
-use crate::config::ServerConfig;
+use crate::cross_cutting::config::ServerConfig;
 
 async fn health() -> Json<serde_json::Value> {
     Json(json!({

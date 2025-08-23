@@ -1,10 +1,10 @@
-mod config;
+mod cross_cutting;
 mod ports;
 
 use anyhow::{Context, Result};
 
-use self::config::AppConfig;
-use self::ports::driven::http::start_server;
+use crate::cross_cutting::config::AppConfig;
+use crate::ports::driven::http::start_server;
 
 #[tokio::main]
 async fn main() -> Result<()> {
