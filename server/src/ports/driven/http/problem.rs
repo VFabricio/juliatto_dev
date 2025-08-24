@@ -13,16 +13,22 @@ pub struct ProblemBuilder<'a> {
 }
 
 impl<'a> ProblemBuilder<'a> {
-    pub const UNHEALTHY: Self = Self {
-        problem_type: "/health-check/unhealthy",
-        title: "The service is unhealthy.",
-        status: StatusCode::SERVICE_UNAVAILABLE,
+    pub const METHOD_NOT_ALLOWED: Self = Self {
+        problem_type: "/router/not-allowed",
+        title: "Method not allowed.",
+        status: StatusCode::METHOD_NOT_ALLOWED,
     };
 
     pub const ROUTE_NOT_FOUND: Self = Self {
         problem_type: "/router/not-found",
         title: "Route not found.",
         status: StatusCode::NOT_FOUND,
+    };
+
+    pub const UNHEALTHY: Self = Self {
+        problem_type: "/health-check/unhealthy",
+        title: "The service is unhealthy.",
+        status: StatusCode::SERVICE_UNAVAILABLE,
     };
 
     pub fn detail(self, detail: String) -> Problem {

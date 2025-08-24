@@ -47,6 +47,15 @@ async fn handle_not_found(request: Request) -> Problem {
         .with_instance(path.into())
 }
 
+async fn handle_method_not_allowed(request: Request) -> Problem {
+    let path = request.uri().path();
+    let method = request.method();
+    ProblemBuilder::METHOD_NOT_ALLOWED
+        .detail(format!("Method {method} not allowed for route {path}."))
+        .with_instance(path.into())
+        .with_extension("method".into(), json!(method.as_str()))
+}
+
 #[instrument]
 pub async fn start_server<C: Clock>(config: ServerConfig, clock: C) -> Result<impl IntoFuture> {
     let address = config.address;
@@ -60,6 +69,7 @@ pub async fn start_server<C: Clock>(config: ServerConfig, clock: C) -> Result<im
         .route("/api/health", get(health))
         .layer(make_trace_layer(address))
         .fallback(handle_not_found)
+        .method_not_allowed_fallback(handle_method_not_allowed)
         .with_state(state);
 
     Ok(serve(listener, router.into_make_service()))
