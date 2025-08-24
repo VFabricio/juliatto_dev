@@ -255,7 +255,7 @@ fn on_response() -> impl Fn(&Response<Body>, Duration, &Span) + Clone {
         get_response_header(response, "content-length")
             .and_then(|h| h.parse::<u64>().ok())
             .inspect(|h| {
-                span.record("http.response.header.content-type", h);
+                span.record("http.response.header.content-length", h);
             });
     }
 }
@@ -316,8 +316,10 @@ impl ClassifyResponse for Classifier {
     ) -> ClassifiedResponse<Self::FailureClass, Self::ClassifyEos> {
         if let Some(problem) = response.extensions().get::<Problem>() {
             ClassifiedResponse::Ready(Err(ClassifierError::Problem(problem.clone())))
-        } else {
+        } else if response.status().is_server_error() {
             ClassifiedResponse::Ready(Err(ClassifierError::Unknown))
+        } else {
+            ClassifiedResponse::Ready(Ok(()))
         }
     }
 }
