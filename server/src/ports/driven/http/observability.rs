@@ -263,10 +263,10 @@ fn on_response() -> impl Fn(&Response<Body>, Duration, &Span) + Clone {
 fn on_failure() -> impl Fn(ClassifierError, Duration, &Span) + Clone {
     |error, _latency, span| match error {
         ClassifierError::Problem(problem) => {
-            let uri = problem.get_type();
+            let problem_type = problem.problem_type();
             let title = problem.title();
-            span.record("error.type", uri);
-            span.record("http.response.problem.type", uri);
+            span.record("error.type", problem_type);
+            span.record("http.response.problem.type", problem_type);
             span.record("http.response.problem.title", title);
             span.record(
                 "http.response.problem.instance",

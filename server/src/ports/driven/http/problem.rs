@@ -1,104 +1,54 @@
 use std::collections::HashMap;
 
 use axum::response::IntoResponse;
-use http::{StatusCode, Uri};
+use http::StatusCode;
 use serde::{Serialize, Serializer, ser::SerializeMap};
 use serde_json::{Value, to_string};
 
 #[derive(Clone, Debug)]
-pub enum ProblemType {
-    HealthChecker(HealthChecker),
-    Router(Router),
+pub struct ProblemBuilder<'a> {
+    problem_type: &'a str,
+    title: &'a str,
+    status: StatusCode,
 }
 
-impl ProblemType {
-    fn get_type(&self) -> &str {
-        match self {
-            Self::HealthChecker(h) => h.get_type(),
-            Self::Router(r) => r.get_type(),
+impl<'a> ProblemBuilder<'a> {
+    pub const UNHEALTHY: Self = Self {
+        problem_type: "/health-check/unhealthy",
+        title: "The service is unhealthy.",
+        status: StatusCode::SERVICE_UNAVAILABLE,
+    };
+
+    pub const ROUTE_NOT_FOUND: Self = Self {
+        problem_type: "/router/not-found",
+        title: "Route not found.",
+        status: StatusCode::NOT_FOUND,
+    };
+
+    pub fn detail(self, detail: String) -> Problem {
+        Problem {
+            problem_type: self.problem_type.into(),
+            title: self.title.into(),
+            status: self.status,
+            detail,
+            instance: None,
+            extensions: HashMap::new(),
         }
-    }
-
-    fn title(&self) -> &str {
-        match self {
-            Self::HealthChecker(h) => h.title(),
-            Self::Router(r) => r.get_type(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum HealthChecker {
-    Unhealthy,
-}
-
-impl HealthChecker {
-    fn get_type(&self) -> &str {
-        match self {
-            Self::Unhealthy => "/health-check/unhealthy",
-        }
-    }
-
-    fn title(&self) -> &str {
-        match self {
-            Self::Unhealthy => "Service unhealthy.",
-        }
-    }
-}
-
-impl From<HealthChecker> for ProblemType {
-    fn from(value: HealthChecker) -> Self {
-        Self::HealthChecker(value)
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum Router {
-    NotFound,
-}
-
-impl Router {
-    fn get_type(&self) -> &str {
-        match self {
-            Self::NotFound => "/router/not-found",
-        }
-    }
-
-    fn title(&self) -> &str {
-        match self {
-            Self::NotFound => "Resource not found.",
-        }
-    }
-}
-
-impl From<Router> for ProblemType {
-    fn from(value: Router) -> Self {
-        Self::Router(value)
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Problem {
-    problem_type: ProblemType,
+    problem_type: String,
+    title: String,
     detail: String,
     status: StatusCode,
-    instance: Option<Uri>,
+    instance: Option<String>,
     extensions: HashMap<String, Value>,
 }
 
 impl Problem {
-    pub fn new<S: Into<String>>(problem_type: ProblemType, detail: S, status: StatusCode) -> Self {
-        Self {
-            problem_type,
-            detail: detail.into(),
-            status,
-            instance: None,
-            extensions: HashMap::new(),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn with_instance(mut self, instance: Uri) -> Self {
+    pub fn with_instance(mut self, instance: String) -> Self {
         self.instance = Some(instance);
         self
     }
@@ -108,16 +58,19 @@ impl Problem {
         self
     }
 
-    pub fn get_type(&self) -> &str {
-        self.problem_type.get_type()
+    pub fn problem_type(&self) -> &str {
+        &self.problem_type
     }
 
     pub fn title(&self) -> &str {
-        self.problem_type.title()
+        &self.title
     }
 
-    pub fn instance(&self) -> Option<Uri> {
-        self.instance.clone()
+    pub fn instance(&self) -> Option<&str> {
+        match &self.instance {
+            None => None,
+            Some(i) => Some(i.as_str()),
+        }
     }
 
     pub fn extensions(&self) -> &HashMap<String, Value> {
@@ -131,7 +84,7 @@ impl Serialize for Problem {
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(4 + self.extensions.len()))?;
-        map.serialize_entry("type", self.get_type())?;
+        map.serialize_entry("type", self.problem_type())?;
         map.serialize_entry("title", self.title())?;
         map.serialize_entry("status", &self.status.as_u16())?;
         map.serialize_entry("detail", &self.detail)?;

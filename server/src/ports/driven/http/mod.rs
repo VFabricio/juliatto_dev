@@ -9,13 +9,15 @@ use axum::{
     routing::get,
     serve,
 };
-use http::StatusCode;
 use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
 use tracing::instrument;
 
-use self::{observability::make_trace_layer, problem::Problem};
+use self::{
+    observability::make_trace_layer,
+    problem::{Problem, ProblemBuilder},
+};
 use crate::adapters::clock::Clock;
 use crate::cross_cutting::config::ServerConfig;
 
@@ -39,12 +41,10 @@ impl<C: Clock> ServerState<C> {
 }
 
 async fn handle_not_found(request: Request) -> Problem {
-    Problem::new(
-        problem::Router::NotFound.into(),
-        request.uri().path(),
-        StatusCode::NOT_FOUND,
-    )
-    .with_extension("method".into(), json!(request.method().to_string()))
+    let path = request.uri().path();
+    ProblemBuilder::ROUTE_NOT_FOUND
+        .detail(format!("Route {path} was not found."))
+        .with_instance(path.into())
 }
 
 #[instrument]
