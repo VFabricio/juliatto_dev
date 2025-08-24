@@ -3,6 +3,7 @@ use config::{Config, File};
 use serde::Deserialize;
 use std::env::var;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 #[derive(Eq, PartialEq)]
 pub enum Environment {
@@ -66,9 +67,14 @@ pub struct ServerConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct StaticFileConfig {
+    pub path: PathBuf,
+}
+#[derive(Debug, Deserialize)]
 pub struct AppConfig {
     pub observability: ObservabilityConfig,
     pub server: ServerConfig,
+    pub static_file: StaticFileConfig,
 }
 
 impl AppConfig {

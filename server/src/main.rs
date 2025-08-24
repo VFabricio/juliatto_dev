@@ -12,7 +12,7 @@ async fn main() -> Result<()> {
     let config = AppConfig::load().context("Failed to load configuration.")?;
     init_observability(config.observability).context("Failed to configure observability.")?;
     let clock = SystemClock::new();
-    let server = start_server(config.server, clock).await?;
+    let server = start_server(config.server, config.static_file, clock).await?;
     server.await;
     Ok(())
 }
