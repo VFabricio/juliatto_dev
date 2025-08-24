@@ -8,18 +8,21 @@ use serde_json::{Value, to_string};
 #[derive(Clone, Debug)]
 pub enum ProblemType {
     HealthChecker(HealthChecker),
+    Router(Router),
 }
 
 impl ProblemType {
     fn get_type(&self) -> &str {
         match self {
             Self::HealthChecker(h) => h.get_type(),
+            Self::Router(r) => r.get_type(),
         }
     }
 
     fn title(&self) -> &str {
         match self {
             Self::HealthChecker(h) => h.title(),
+            Self::Router(r) => r.get_type(),
         }
     }
 }
@@ -38,7 +41,7 @@ impl HealthChecker {
 
     fn title(&self) -> &str {
         match self {
-            Self::Unhealthy => "Service unhealthy",
+            Self::Unhealthy => "Service unhealthy.",
         }
     }
 }
@@ -46,6 +49,31 @@ impl HealthChecker {
 impl From<HealthChecker> for ProblemType {
     fn from(value: HealthChecker) -> Self {
         Self::HealthChecker(value)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Router {
+    NotFound,
+}
+
+impl Router {
+    fn get_type(&self) -> &str {
+        match self {
+            Self::NotFound => "/router/not-found",
+        }
+    }
+
+    fn title(&self) -> &str {
+        match self {
+            Self::NotFound => "Resource not found.",
+        }
+    }
+}
+
+impl From<Router> for ProblemType {
+    fn from(value: Router) -> Self {
+        Self::Router(value)
     }
 }
 

@@ -2,36 +2,29 @@ mod observability;
 mod problem;
 
 use anyhow::{Context, Result};
-use axum::{Router, extract::State, response::Json, routing::get, serve};
+use axum::{
+    Router,
+    extract::{Request, State},
+    response::Json,
+    routing::get,
+    serve,
+};
 use http::StatusCode;
 use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
 use tracing::instrument;
 
-use self::{
-    observability::make_trace_layer,
-    problem::{HealthChecker, Problem},
-};
+use self::{observability::make_trace_layer, problem::Problem};
 use crate::adapters::clock::Clock;
 use crate::cross_cutting::config::ServerConfig;
 
-async fn health<C: Clock>(
-    State(state): State<ServerState<C>>,
-) -> Result<Json<serde_json::Value>, Problem> {
+async fn health<C: Clock>(State(state): State<ServerState<C>>) -> Json<serde_json::Value> {
     let timestamp = state.clock.now().timestamp();
-    /*
     Json(json!({
         "status": "healthy",
         "timestamp": timestamp,
     }))
-    */
-    Err(Problem::new(
-        HealthChecker::Unhealthy.into(),
-        "The service is unhealthy.",
-        StatusCode::SERVICE_UNAVAILABLE,
-    )
-    .with_extension("timestamp".into(), json!(timestamp)))
 }
 
 #[derive(Clone)]
@@ -43,6 +36,15 @@ impl<C: Clock> ServerState<C> {
     pub fn new(clock: C) -> Self {
         Self { clock }
     }
+}
+
+async fn handle_not_found(request: Request) -> Problem {
+    Problem::new(
+        problem::Router::NotFound.into(),
+        request.uri().path(),
+        StatusCode::NOT_FOUND,
+    )
+    .with_extension("method".into(), json!(request.method().to_string()))
 }
 
 #[instrument]
@@ -57,6 +59,7 @@ pub async fn start_server<C: Clock>(config: ServerConfig, clock: C) -> Result<im
     let router = Router::new()
         .route("/api/health", get(health))
         .layer(make_trace_layer(address))
+        .fallback(handle_not_found)
         .with_state(state);
 
     Ok(serve(listener, router.into_make_service()))
