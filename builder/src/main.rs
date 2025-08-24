@@ -3,6 +3,29 @@ use std::env::args;
 use std::fs::{OpenOptions, create_dir_all};
 use std::path::Path;
 use tera::Tera;
+
+fn build_page<D: AsRef<Path>>(
+    page: &str,
+    destination: D,
+    tera: &Tera,
+    context: tera::Context,
+) -> Result<()> {
+    let page_path = Path::new("pages").join(page);
+    let page_path = page_path
+        .to_str()
+        .context(format!("File {page} has a name that is not valid Unicode."))?;
+
+    let mut output_file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(destination)
+        .context("Failed to open file {output_path}")?;
+
+    tera.render_to(page_path, &context, &mut output_file)
+        .context(format!("Failed to render template {page}."))
+}
+
 fn main() -> Result<()> {
     let mut args = args().skip(1);
     let templates_dir = &args
@@ -16,33 +39,13 @@ fn main() -> Result<()> {
     let tera = Tera::new(&format!("{templates_dir}/**/*.html"))
         .context("Failed to build Tera instance.")?;
 
-    let templates_dir = Path::new(templates_dir);
-
-    for page in templates_dir
-        .join("pages")
-        .read_dir()
-        .context("Failed to read pages directory.")?
-        .flatten()
-        .flat_map(|f| f.file_name().into_string())
-    {
-        let page_path = Path::new("pages").join(&page);
-        let page_path = page_path
-            .to_str()
-            .context(format!("File {page} has a name that is not valid Unicode."))?;
-
-        let output_path = output_dir.join(&page);
-
-        let mut output_file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(output_path)
-            .context("Failed to open file {output_path}")?;
-
-        let context = tera::Context::new();
-        tera.render_to(page_path, &context, &mut output_file)
-            .context(format!("Failed to render template {page}."))?;
-    }
+    build_page(
+        "home.html",
+        output_dir.join("home.html"),
+        &tera,
+        tera::Context::new(),
+    )
+    .context("Failed to build home.")?;
 
     Ok(())
 }
