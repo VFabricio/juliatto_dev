@@ -167,6 +167,10 @@ fn get_client_address(
 
 fn make_span_with(listener_address: SocketAddr) -> impl Fn(&Request<Body>) -> Span + Clone {
     move |request| {
+        let request_id = request
+            .headers()
+            .get("x-request-id")
+            .and_then(|id| id.to_str().ok());
         let forwarded = &ForwardedHeaderFields::parse(request);
         let listener_ip = listener_address.ip().to_string();
         let (server_host, server_port) = get_server_address(request, forwarded)
@@ -202,6 +206,7 @@ fn make_span_with(listener_address: SocketAddr) -> impl Fn(&Request<Body>) -> Sp
         tracing::info_span!(
             "HTTP request",
             otel.name = format!("{} {}", method, path),
+            request_id,
             http.request.method = method,
             url.scheme = scheme,
             url.path = path,

@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use axum::{
     Router,
     extract::{Request, State},
-    handler::Handler,
     response::Json,
     routing::get,
     serve,
@@ -13,7 +12,11 @@ use axum::{
 use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
-use tower_http::services::ServeFile;
+use tower::ServiceBuilder;
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    services::ServeFile,
+};
 use tracing::instrument;
 
 use self::{
@@ -72,10 +75,12 @@ pub async fn start_server<C: Clock>(
 
     let state = ServerState::new(clock);
 
-    let trace_layer = make_trace_layer(address);
+    let middleware = ServiceBuilder::new()
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        .layer(PropagateRequestIdLayer::x_request_id())
+        .layer(make_trace_layer(address));
 
     let router = Router::new()
-        .layer(trace_layer.clone())
         .route("/api/health", get(health))
         .route_service("/", ServeFile::new(path.join("home.html")))
         .route_service(
@@ -86,9 +91,10 @@ pub async fn start_server<C: Clock>(
             "/static/style.css",
             ServeFile::new(path.join("static").join("style.css")),
         )
-        .fallback(handle_not_found.layer(trace_layer.clone()))
-        .method_not_allowed_fallback(handle_method_not_allowed.layer(trace_layer.clone()))
-        .with_state(state);
+        .fallback(handle_not_found)
+        .method_not_allowed_fallback(handle_method_not_allowed)
+        .with_state(state)
+        .layer(middleware);
 
     Ok(serve(listener, router.into_make_service()))
 }
