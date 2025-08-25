@@ -5,6 +5,7 @@ use anyhow::{Context, Result};
 use axum::{
     Router,
     extract::{Request, State},
+    handler::Handler,
     response::Json,
     routing::get,
     serve,
@@ -70,7 +71,11 @@ pub async fn start_server<C: Clock>(
     println!("Server listening on http://{address}.");
 
     let state = ServerState::new(clock);
+
+    let trace_layer = make_trace_layer(address);
+
     let router = Router::new()
+        .layer(trace_layer.clone())
         .route("/api/health", get(health))
         .route_service("/", ServeFile::new(path.join("home.html")))
         .route_service(
@@ -81,9 +86,8 @@ pub async fn start_server<C: Clock>(
             "/static/style.css",
             ServeFile::new(path.join("static").join("style.css")),
         )
-        .layer(make_trace_layer(address))
-        .fallback(handle_not_found)
-        .method_not_allowed_fallback(handle_method_not_allowed)
+        .fallback(handle_not_found.layer(trace_layer.clone()))
+        .method_not_allowed_fallback(handle_method_not_allowed.layer(trace_layer.clone()))
         .with_state(state);
 
     Ok(serve(listener, router.into_make_service()))
