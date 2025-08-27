@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use serde::{Serialize, Serializer, ser::SerializeMap};
 use serde_json::{Value, to_string};
@@ -102,7 +102,7 @@ impl Serialize for Problem {
 }
 
 impl IntoResponse for Problem {
-    fn into_response(self) -> axum::response::Response {
+    fn into_response(self) -> Response {
         let mut response = (self.status, to_string(&self).unwrap()).into_response();
         response
             .headers_mut()

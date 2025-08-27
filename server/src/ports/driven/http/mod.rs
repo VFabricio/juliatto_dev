@@ -1,5 +1,6 @@
 mod observability;
 mod problem;
+mod serve_static;
 
 use anyhow::{Context, Result};
 use axum::{
@@ -13,15 +14,13 @@ use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
-use tower_http::{
-    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
-    services::ServeFile,
-};
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tracing::instrument;
 
 use self::{
     observability::make_trace_layer,
     problem::{Problem, ProblemBuilder},
+    serve_static::ServeStaticService,
 };
 use crate::adapters::clock::Clock;
 use crate::cross_cutting::config::{ServerConfig, StaticFileConfig};
@@ -82,14 +81,14 @@ pub async fn start_server<C: Clock>(
 
     let router = Router::new()
         .route("/api/health", get(health))
-        .route_service("/", ServeFile::new(path.join("home.html")))
+        .route_service("/", ServeStaticService::new(path.join("home.html")))
         .route_service(
             "/static/script.js",
-            ServeFile::new(path.join("static").join("script.js")),
+            ServeStaticService::new(path.join("static").join("script.js")),
         )
         .route_service(
             "/static/style.css",
-            ServeFile::new(path.join("static").join("style.css")),
+            ServeStaticService::new(path.join("static").join("style.css")),
         )
         .fallback(handle_not_found)
         .method_not_allowed_fallback(handle_method_not_allowed)
