@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, anyhow};
 use config::{Config, File};
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::env::var;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -45,8 +46,6 @@ pub enum ObservabilityLevel {
 pub struct ObservabilityConfig {
     pub endpoint: String,
     pub level: ObservabilityLevel,
-    pub service_name: String,
-    pub service_version: String,
 }
 
 impl AsRef<str> for ObservabilityLevel {
@@ -70,17 +69,35 @@ pub struct ServerConfig {
 pub struct StaticFileConfig {
     pub path: PathBuf,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct PackageConfig {
+    pub package_name: String,
+    pub workspace_name: String,
+    pub version: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct AppConfig {
     pub observability: ObservabilityConfig,
     pub server: ServerConfig,
     pub static_file: StaticFileConfig,
+    pub package: PackageConfig,
 }
 
 impl AppConfig {
-    pub fn load() -> Result<Self> {
+    pub fn load(workspace_name: &str) -> Result<Self> {
         let environment = Environment::from_env().context("Failed to read environment.")?;
-        let mut builder = Config::builder();
+        let mut builder = Config::builder()
+            .set_default(
+                "package",
+                HashMap::from_iter(vec![
+                    ("package_name".to_owned(), env!("CARGO_PKG_NAME")),
+                    ("workspace_name".to_owned(), workspace_name),
+                    ("version".to_owned(), env!("CARGO_PKG_VERSION")),
+                ]),
+            )
+            .context("Failed to set default PackageConfig.")?;
         if environment == Environment::Development {
             builder = builder.add_source(File::with_name(CONFIG_FILE).required(false));
         }
