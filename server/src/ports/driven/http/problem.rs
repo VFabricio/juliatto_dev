@@ -25,13 +25,27 @@ impl<'a> ProblemBuilder<'a> {
         status: StatusCode::NOT_FOUND,
     };
 
+    /*
     pub const UNHEALTHY: Self = Self {
         problem_type: "/health-check/unhealthy",
         title: "The service is unhealthy.",
         status: StatusCode::SERVICE_UNAVAILABLE,
     };
+    */
 
-    pub fn detail(self, detail: String) -> Problem {
+    pub const VERIFICATION_TOKEN_INVALID: Self = Self {
+        problem_type: "/subscription/invalid-token",
+        title: "Verification token is invalid.",
+        status: StatusCode::UNPROCESSABLE_ENTITY,
+    };
+
+    pub const VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE: Self = Self {
+        problem_type: "/subscription/token-validation-unavailable",
+        title: "Token validation service is unavailable.",
+        status: StatusCode::INTERNAL_SERVER_ERROR,
+    };
+
+    pub fn detail(self, detail: Option<String>) -> Problem {
         Problem {
             problem_type: self.problem_type.into(),
             title: self.title.into(),
@@ -47,7 +61,7 @@ impl<'a> ProblemBuilder<'a> {
 pub struct Problem {
     problem_type: String,
     title: String,
-    detail: String,
+    detail: Option<String>,
     status: StatusCode,
     instance: Option<String>,
     extensions: HashMap<String, Value>,

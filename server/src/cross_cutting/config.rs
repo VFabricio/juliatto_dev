@@ -1,5 +1,6 @@
 use anyhow::{Context, Result, anyhow};
 use config::{Config, File};
+use secrecy::SecretString;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env::var;
@@ -77,12 +78,19 @@ pub struct PackageConfig {
     pub version: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
+pub struct TurnstileConfig {
+    pub route: String,
+    pub secret: SecretString,
+}
+
+#[derive(Deserialize)]
 pub struct AppConfig {
     pub observability: ObservabilityConfig,
     pub server: ServerConfig,
     pub static_file: StaticFileConfig,
     pub package: PackageConfig,
+    pub turnstile: TurnstileConfig,
 }
 
 impl AppConfig {

@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.99"
+async-trait = "0.1.89"
 axum = { version = "0.8.4", features = ["macros"] }
 chrono = { version = "0.4.41", features = ["serde"] }
 config = "0.15.14"
@@ -13,8 +14,11 @@ opentelemetry = "0.30.0"
 opentelemetry-otlp = { version = "0.30.0", features = ["grpc-tonic"] }
 opentelemetry_sdk = "0.30.0"
 regex = "1.11.1"
+reqwest = { version = "0.12.23", features = ["json"] }
+secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
+thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["rt-multi-thread"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["fs", "request-id", "trace"] }

@@ -7,9 +7,11 @@ use axum::{
     Router,
     extract::{Request, State},
     response::Json,
-    routing::get,
+    routing::{get, post},
     serve,
 };
+use http::StatusCode;
+use serde::Deserialize;
 use serde_json::json;
 use std::future::IntoFuture;
 use tokio::net::TcpListener;
@@ -22,13 +24,17 @@ use self::{
     problem::{Problem, ProblemBuilder},
     serve_static::ServeStaticService,
 };
-use crate::adapters::clock::Clock;
-use crate::cross_cutting::config::{ServerConfig, StaticFileConfig};
+use crate::adapters::{clock::Clock, token_validator::TokenValidator};
+use crate::commands::subscriptions::{CreateSubscriptionError, create_subscription};
+use crate::cross_cutting::{
+    config::{ServerConfig, StaticFileConfig},
+    error::LogError,
+};
 
 async fn handle_not_found(request: Request) -> Problem {
     let path = request.uri().path();
     ProblemBuilder::ROUTE_NOT_FOUND
-        .detail(format!("Route {path} was not found."))
+        .detail(Some(format!("Route {path} was not found.")))
         .with_instance(path.into())
 }
 
@@ -36,35 +42,78 @@ async fn handle_method_not_allowed(request: Request) -> Problem {
     let path = request.uri().path();
     let method = request.method();
     ProblemBuilder::METHOD_NOT_ALLOWED
-        .detail(format!("Method {method} not allowed for route {path}."))
+        .detail(Some(format!(
+            "Method {method} not allowed for route {path}."
+        )))
         .with_instance(path.into())
         .with_extension("method".into(), json!(method.as_str()))
 }
 
 #[derive(Clone)]
-struct ServerState<C> {
+struct ServerState<C, T> {
     pub clock: C,
+    pub token_validator: T,
 }
 
-impl<C: Clock> ServerState<C> {
-    pub fn new(clock: C) -> Self {
-        Self { clock }
+impl<C: Clock, T: TokenValidator> ServerState<C, T> {
+    pub fn new(clock: C, token_validator: T) -> Self {
+        Self {
+            clock,
+            token_validator,
+        }
     }
 }
 
-async fn health<C: Clock>(State(state): State<ServerState<C>>) -> Json<serde_json::Value> {
-    let timestamp = state.clock.now().timestamp();
+#[instrument]
+async fn health<C: Clock, T: TokenValidator>(
+    State(ServerState { clock, .. }): State<ServerState<C, T>>,
+) -> Json<serde_json::Value> {
+    let timestamp = clock.now().timestamp();
     Json(json!({
         "status": "healthy",
         "timestamp": timestamp,
     }))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateSubscription {
+    email: String,
+    name: String,
+    turnstile_token: String,
+}
+
 #[instrument]
-pub async fn start_server<C: Clock>(
+async fn create_subscription_handler<C: Clock, T: TokenValidator>(
+    State(ServerState {
+        token_validator, ..
+    }): State<ServerState<C, T>>,
+    Json(CreateSubscription {
+        email,
+        name,
+        turnstile_token,
+    }): Json<CreateSubscription>,
+) -> Result<StatusCode, Problem> {
+    create_subscription(email, name, turnstile_token.clone(), token_validator)
+        .await
+        .log_error()
+        .map(|_| StatusCode::CREATED)
+        .map_err(|error| match error {
+            CreateSubscriptionError::TokenInvalid => ProblemBuilder::VERIFICATION_TOKEN_INVALID
+                .detail(Some(format!("Token {} is not valid.", &turnstile_token)))
+                .with_extension("token".into(), json!(turnstile_token)),
+            CreateSubscriptionError::TokenValidatorUnavailable => {
+                ProblemBuilder::VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE.detail(None)
+            }
+        })
+}
+
+#[instrument]
+pub async fn start_server<C: Clock, T: TokenValidator>(
     config: ServerConfig,
     StaticFileConfig { path }: StaticFileConfig,
     clock: C,
+    token_validator: T,
 ) -> Result<impl IntoFuture> {
     let address = config.address;
     let listener = TcpListener::bind(address)
@@ -72,7 +121,7 @@ pub async fn start_server<C: Clock>(
         .context(format!("Failed to bind to address {address}"))?;
     println!("Server listening on http://{address}.");
 
-    let state = ServerState::new(clock);
+    let state = ServerState::new(clock, token_validator);
 
     let middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
@@ -80,7 +129,6 @@ pub async fn start_server<C: Clock>(
         .layer(make_trace_layer(address));
 
     let router = Router::new()
-        .route("/api/health", get(health))
         .route_service("/", ServeStaticService::new(path.join("home.html")))
         .route_service(
             "/static/script.js",
@@ -90,6 +138,8 @@ pub async fn start_server<C: Clock>(
             "/static/style.css",
             ServeStaticService::new(path.join("static").join("style.css")),
         )
+        .route("/api/health", get(health))
+        .route("/api/newsletter", post(create_subscription_handler))
         .fallback(handle_not_found)
         .method_not_allowed_fallback(handle_method_not_allowed)
         .with_state(state)

@@ -30,10 +30,10 @@ impl Future for ServeStaticFuture {
             Poll::Ready(r) => Poll::Ready(r.map(|r| {
                 if r.status() == StatusCode::METHOD_NOT_ALLOWED {
                     ProblemBuilder::METHOD_NOT_ALLOWED
-                        .detail(format!(
+                        .detail(Some(format!(
                             "Method {} not allowed for route {}.",
                             self.method, self.path,
-                        ))
+                        )))
                         .with_instance(self.path.clone())
                         .with_extension("method".into(), json!(self.method.as_str()))
                         .into_response()

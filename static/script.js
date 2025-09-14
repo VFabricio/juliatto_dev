@@ -1,4 +1,4 @@
-const TURNSTILE_KEY = "1x00000000000000000000AA";
+const TURNSTILE_KEY = "3x00000000000000000000FF";
 
 class Newsletter {
   constructor() {
@@ -50,6 +50,8 @@ class Newsletter {
       }
     }).catch((error) => {
       this.handleSendError(error);
+    }).finally((error) => {
+      this.setLoading(false);
     })
   }
 
@@ -62,12 +64,10 @@ class Newsletter {
   }
 
   handleSendSuccess() {
-    this.setLoading(false);
     this.subscriptionSuccess.classList.remove("hidden");
   }
 
   handleSendError(error) {
-    this.setLoading(false);
     console.error(">>> Error sending subscription: ", error);
     this.subscriptionError.classList.remove("hidden");
   }
