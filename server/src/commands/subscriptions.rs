@@ -1,8 +1,13 @@
 use thiserror::Error;
 use tracing::instrument;
 
-use crate::adapters::token_validator::{TokenValidator, ValidateTokenError};
+use crate::adapters::{
+    code_generator::CodeGenerator,
+    subscription_repository::{SubscriptionRepository, SubscriptionRepositoryError},
+    token_validator::{TokenValidator, ValidateTokenError},
+};
 use crate::cross_cutting::error::LogError;
+use crate::domain::subscription::{Subscription, SubscriptionStatus};
 
 #[derive(Debug, Error)]
 pub enum CreateSubscriptionError {
@@ -10,6 +15,8 @@ pub enum CreateSubscriptionError {
     TokenInvalid,
     #[error("it was not possible to validate the token due to an internal error")]
     TokenValidatorUnavailable,
+    #[error("subscription creation failed")]
+    SubscriptionCreationFailed,
 }
 
 impl From<ValidateTokenError> for CreateSubscriptionError {
@@ -21,14 +28,40 @@ impl From<ValidateTokenError> for CreateSubscriptionError {
     }
 }
 
+impl From<SubscriptionRepositoryError> for CreateSubscriptionError {
+    fn from(value: SubscriptionRepositoryError) -> Self {
+        match value {
+            SubscriptionRepositoryError::Creation => Self::SubscriptionCreationFailed,
+        }
+    }
+}
+
 #[instrument]
-pub async fn create_subscription<T: TokenValidator>(
+pub async fn create_subscription<C: CodeGenerator, R: SubscriptionRepository, T: TokenValidator>(
     email: String,
     name: String,
     token: String,
+    code_generator: C,
+    subscription_repository: R,
     token_validator: T,
 ) -> Result<(), CreateSubscriptionError> {
     token_validator.validate_token(&token).await.log_error()?;
+
+    let verification_code = code_generator.generate();
+    let unsubscription_code = code_generator.generate();
+
+    let subscription = Subscription {
+        name,
+        email,
+        status: SubscriptionStatus::WaitingValidation,
+        verification_code,
+        unsubscription_code,
+    };
+
+    subscription_repository
+        .create(&subscription)
+        .await
+        .log_error()?;
 
     Ok(())
 }

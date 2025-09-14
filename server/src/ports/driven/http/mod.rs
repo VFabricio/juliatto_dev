@@ -24,7 +24,10 @@ use self::{
     problem::{Problem, ProblemBuilder},
     serve_static::ServeStaticService,
 };
-use crate::adapters::{clock::Clock, token_validator::TokenValidator};
+use crate::adapters::{
+    clock::Clock, code_generator::CodeGenerator, subscription_repository::SubscriptionRepository,
+    token_validator::TokenValidator,
+};
 use crate::commands::subscriptions::{CreateSubscriptionError, create_subscription};
 use crate::cross_cutting::{
     config::{ServerConfig, StaticFileConfig},
@@ -50,23 +53,34 @@ async fn handle_method_not_allowed(request: Request) -> Problem {
 }
 
 #[derive(Clone)]
-struct ServerState<C, T> {
-    pub clock: C,
+struct ServerState<CL, CG, R, T> {
+    pub clock: CL,
+    pub code_generator: CG,
+    pub subscription_repository: R,
     pub token_validator: T,
 }
 
-impl<C: Clock, T: TokenValidator> ServerState<C, T> {
-    pub fn new(clock: C, token_validator: T) -> Self {
+impl<CL: Clock, CG: CodeGenerator, R: SubscriptionRepository, T: TokenValidator>
+    ServerState<CL, CG, R, T>
+{
+    pub fn new(
+        clock: CL,
+        code_generator: CG,
+        subscription_repository: R,
+        token_validator: T,
+    ) -> Self {
         Self {
             clock,
+            code_generator,
+            subscription_repository,
             token_validator,
         }
     }
 }
 
 #[instrument]
-async fn health<C: Clock, T: TokenValidator>(
-    State(ServerState { clock, .. }): State<ServerState<C, T>>,
+async fn health<CL: Clock, CG: CodeGenerator, R: SubscriptionRepository, T: TokenValidator>(
+    State(ServerState { clock, .. }): State<ServerState<CL, CG, R, T>>,
 ) -> Json<serde_json::Value> {
     let timestamp = clock.now().timestamp();
     Json(json!({
@@ -84,35 +98,59 @@ struct CreateSubscription {
 }
 
 #[instrument]
-async fn create_subscription_handler<C: Clock, T: TokenValidator>(
+async fn create_subscription_handler<
+    CL: Clock,
+    CG: CodeGenerator,
+    R: SubscriptionRepository,
+    T: TokenValidator,
+>(
     State(ServerState {
-        token_validator, ..
-    }): State<ServerState<C, T>>,
+        code_generator,
+        subscription_repository,
+        token_validator,
+        ..
+    }): State<ServerState<CL, CG, R, T>>,
     Json(CreateSubscription {
         email,
         name,
         turnstile_token,
     }): Json<CreateSubscription>,
 ) -> Result<StatusCode, Problem> {
-    create_subscription(email, name, turnstile_token.clone(), token_validator)
-        .await
-        .log_error()
-        .map(|_| StatusCode::CREATED)
-        .map_err(|error| match error {
-            CreateSubscriptionError::TokenInvalid => ProblemBuilder::VERIFICATION_TOKEN_INVALID
-                .detail(Some(format!("Token {} is not valid.", &turnstile_token)))
-                .with_extension("token".into(), json!(turnstile_token)),
-            CreateSubscriptionError::TokenValidatorUnavailable => {
-                ProblemBuilder::VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE.detail(None)
-            }
-        })
+    create_subscription(
+        email,
+        name,
+        turnstile_token.clone(),
+        code_generator,
+        subscription_repository,
+        token_validator,
+    )
+    .await
+    .log_error()
+    .map(|_| StatusCode::CREATED)
+    .map_err(|error| match error {
+        CreateSubscriptionError::TokenInvalid => ProblemBuilder::VERIFICATION_TOKEN_INVALID
+            .detail(Some(format!("Token {} is not valid.", &turnstile_token)))
+            .with_extension("token".into(), json!(turnstile_token)),
+        CreateSubscriptionError::TokenValidatorUnavailable => {
+            ProblemBuilder::VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE.detail(None)
+        }
+        // TODO: handle this
+        CreateSubscriptionError::SubscriptionCreationFailed => todo!(),
+    })
 }
 
 #[instrument]
-pub async fn start_server<C: Clock, T: TokenValidator>(
+pub async fn start_server<
+    CL: Clock,
+    CG: CodeGenerator,
+    R: SubscriptionRepository,
+    T: TokenValidator,
+>(
     config: ServerConfig,
     StaticFileConfig { path }: StaticFileConfig,
-    clock: C,
+    clock: CL,
+    code_generator: CG,
+    subscription_repository: R,
     token_validator: T,
 ) -> Result<impl IntoFuture> {
     let address = config.address;
@@ -121,7 +159,12 @@ pub async fn start_server<C: Clock, T: TokenValidator>(
         .context(format!("Failed to bind to address {address}"))?;
     println!("Server listening on http://{address}.");
 
-    let state = ServerState::new(clock, token_validator);
+    let state = ServerState::new(
+        clock,
+        code_generator,
+        subscription_repository,
+        token_validator,
+    );
 
     let middleware = ServiceBuilder::new()
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
