@@ -53,7 +53,7 @@ pub async fn create_subscription<C: CodeGenerator, R: SubscriptionRepository, T:
     let subscription = Subscription {
         name,
         email,
-        status: SubscriptionStatus::WaitingValidation,
+        status: SubscriptionStatus::SendVerificationEmail,
         verification_code,
         unsubscription_code,
     };

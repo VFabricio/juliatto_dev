@@ -23,7 +23,8 @@ impl Adapter for PostgresSubscriptionRepository {}
 #[sqlx(type_name = "subscription_status")]
 #[sqlx(rename_all = "snake_case")]
 enum DbSubscriptionStatus {
-    WaitingValidation,
+    SendVerificationEmail,
+    WaitingVerification,
     Active,
     Unsubscribed,
 }
@@ -31,8 +32,11 @@ enum DbSubscriptionStatus {
 impl From<SubscriptionStatus> for DbSubscriptionStatus {
     fn from(value: SubscriptionStatus) -> Self {
         match value {
+            SubscriptionStatus::SendVerificationEmail => {
+                DbSubscriptionStatus::SendVerificationEmail
+            }
+            SubscriptionStatus::WaitingVerification => DbSubscriptionStatus::WaitingVerification,
             SubscriptionStatus::Active => DbSubscriptionStatus::Active,
-            SubscriptionStatus::WaitingValidation => DbSubscriptionStatus::WaitingValidation,
             SubscriptionStatus::Unsubscribed => DbSubscriptionStatus::Unsubscribed,
         }
     }
