@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO subscriptions (name, email, status, verification_code, unsubscription_code) VALUES ($1, $2, $3, $4, $5);",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        {
+          "Custom": {
+            "name": "subscription_status",
+            "kind": {
+              "Enum": [
+                "waiting_validation",
+                "active",
+                "unsubscribed"
+              ]
+            }
+          }
+        },
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fd3f536d62f5c661086849ce42e70989d63dac53d2e193ee89ad2319e95f4da5"
+}

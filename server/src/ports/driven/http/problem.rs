@@ -39,9 +39,9 @@ impl<'a> ProblemBuilder<'a> {
         status: StatusCode::UNPROCESSABLE_ENTITY,
     };
 
-    pub const VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE: Self = Self {
-        problem_type: "/subscription/token-validation-unavailable",
-        title: "Token validation service is unavailable.",
+    pub const INTERNAL_ERROR: Self = Self {
+        problem_type: "/general/internal-error",
+        title: "There was an internal error.",
         status: StatusCode::INTERNAL_SERVER_ERROR,
     };
 

@@ -8,6 +8,9 @@ endpoint = "http://0.0.0.0:4317"
 [static_file]
 path = "output"
 
+[database]
+connection_string = "postgresql://juliatto_dev:juliatto_dev@localhost:5432"
+
 [turnstile]
 route = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 secret = "1x0000000000000000000000000000000AA"

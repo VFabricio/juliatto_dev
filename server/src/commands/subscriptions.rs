@@ -15,8 +15,8 @@ pub enum CreateSubscriptionError {
     TokenInvalid,
     #[error("it was not possible to validate the token due to an internal error")]
     TokenValidatorUnavailable,
-    #[error("subscription creation failed")]
-    SubscriptionCreationFailed,
+    #[error("it was not possible to create the subscription due to an internal error")]
+    DatabaseError,
 }
 
 impl From<ValidateTokenError> for CreateSubscriptionError {
@@ -31,7 +31,7 @@ impl From<ValidateTokenError> for CreateSubscriptionError {
 impl From<SubscriptionRepositoryError> for CreateSubscriptionError {
     fn from(value: SubscriptionRepositoryError) -> Self {
         match value {
-            SubscriptionRepositoryError::Creation => Self::SubscriptionCreationFailed,
+            SubscriptionRepositoryError::DatabaseError => Self::DatabaseError,
         }
     }
 }
@@ -58,6 +58,7 @@ pub async fn create_subscription<C: CodeGenerator, R: SubscriptionRepository, T:
         unsubscription_code,
     };
 
+    // TODO: handle case where subscription already exists
     subscription_repository
         .create(&subscription)
         .await

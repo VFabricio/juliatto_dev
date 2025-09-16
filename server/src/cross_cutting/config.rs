@@ -34,6 +34,11 @@ impl Environment {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct DatabaseConfig {
+    pub connection_string: String,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ObservabilityLevel {
     Trace,
@@ -86,10 +91,11 @@ pub struct TurnstileConfig {
 
 #[derive(Deserialize)]
 pub struct AppConfig {
+    pub database: DatabaseConfig,
+    pub package: PackageConfig,
     pub observability: ObservabilityConfig,
     pub server: ServerConfig,
     pub static_file: StaticFileConfig,
-    pub package: PackageConfig,
     pub turnstile: TurnstileConfig,
 }
 

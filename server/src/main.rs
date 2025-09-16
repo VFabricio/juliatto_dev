@@ -27,7 +27,10 @@ async fn main() -> Result<()> {
 
     let code_generator = RandomCodeGenerator;
     let clock = SystemClock::new();
-    let subscription_repository = PostgresSubscriptionRepository {};
+    let subscription_repository =
+        PostgresSubscriptionRepository::new(config.database.connection_string)
+            .await
+            .context("Could not create subscriptions repository.")?;
     let token_validator =
         TurnstileTokenValidator::new(config.turnstile.route, config.turnstile.secret)
             .context("Failed to build Turnstile token validator.")?;

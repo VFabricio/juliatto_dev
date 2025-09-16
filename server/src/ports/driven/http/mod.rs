@@ -126,17 +126,20 @@ async fn create_subscription_handler<
     )
     .await
     .log_error()
-    .map(|_| StatusCode::CREATED)
-    .map_err(|error| match error {
-        CreateSubscriptionError::TokenInvalid => ProblemBuilder::VERIFICATION_TOKEN_INVALID
-            .detail(Some(format!("Token {} is not valid.", &turnstile_token)))
-            .with_extension("token".into(), json!(turnstile_token)),
-        CreateSubscriptionError::TokenValidatorUnavailable => {
-            ProblemBuilder::VERIFICATION_TOKEN_VALIDATION_UNAVAILABLE.detail(None)
-        }
-        // TODO: handle this
-        CreateSubscriptionError::SubscriptionCreationFailed => todo!(),
-    })
+    .map_or_else(
+        |error| match error {
+            CreateSubscriptionError::TokenInvalid => {
+                Err(ProblemBuilder::VERIFICATION_TOKEN_INVALID
+                    .detail(Some(format!("Token {} is not valid.", &turnstile_token)))
+                    .with_extension("token".into(), json!(turnstile_token)))
+            }
+            CreateSubscriptionError::TokenValidatorUnavailable
+            | CreateSubscriptionError::DatabaseError => {
+                Err(ProblemBuilder::INTERNAL_ERROR.detail(None))
+            }
+        },
+        |_| Ok(StatusCode::CREATED),
+    )
 }
 
 #[instrument]

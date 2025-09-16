@@ -10,6 +10,13 @@ services:
       - "16686:16686"
     networks:
       - juliatto-dev
+  postgres:
+    image: postgres:18rc1
+    ports: 
+      - 5432:5432
+    environment:
+      POSTGRES_USER: juliatto_dev
+      POSTGRES_PASSWORD: juliatto_dev
 
 networks:
   juliatto-dev:

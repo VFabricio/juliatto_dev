@@ -1,3 +1,4 @@
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::adapters::{Adapter, code_generator::CodeGenerator};
@@ -8,6 +9,7 @@ pub struct RandomCodeGenerator;
 impl Adapter for RandomCodeGenerator {}
 
 impl CodeGenerator for RandomCodeGenerator {
+    #[instrument]
     fn generate(&self) -> String {
         Uuid::new_v4().to_string()
     }
