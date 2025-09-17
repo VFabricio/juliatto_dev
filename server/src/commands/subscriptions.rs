@@ -3,11 +3,14 @@ use tracing::instrument;
 
 use crate::adapters::{
     code_generator::CodeGenerator,
-    subscription_repository::{SubscriptionRepository, SubscriptionRepositoryError},
+    email_sender::EmailSender,
+    subscription_repository::{
+        CreateSubscription, SubscriptionRepository, SubscriptionRepositoryError,
+    },
     token_validator::{TokenValidator, ValidateTokenError},
 };
 use crate::cross_cutting::error::LogError;
-use crate::domain::subscription::{Subscription, SubscriptionStatus};
+use crate::domain::subscription::{SubscriptionStatus, create_verification_email_body};
 
 #[derive(Debug, Error)]
 pub enum CreateSubscriptionError {
@@ -50,7 +53,7 @@ pub async fn create_subscription<C: CodeGenerator, R: SubscriptionRepository, T:
     let verification_code = code_generator.generate();
     let unsubscription_code = code_generator.generate();
 
-    let subscription = Subscription {
+    let subscription = CreateSubscription {
         name,
         email,
         status: SubscriptionStatus::SendVerificationEmail,
@@ -65,4 +68,54 @@ pub async fn create_subscription<C: CodeGenerator, R: SubscriptionRepository, T:
         .log_error()?;
 
     Ok(())
+}
+
+pub enum SendNextVerificationEmailSuccess {
+    Sent,
+    NoEmailsToSendVerificationTo,
+}
+
+#[derive(Debug, Error)]
+pub enum SendNextVerificationEmailError {
+    #[error("it was not possible to send the next verification email due to an internal error")]
+    Unknown,
+}
+
+#[instrument]
+pub async fn send_next_verification_email<E: EmailSender, R: SubscriptionRepository>(
+    email_sender: &E,
+    subscription_repository: &R,
+    hostname: &str,
+) -> Result<SendNextVerificationEmailSuccess, SendNextVerificationEmailError> {
+    let subscription = subscription_repository
+        .get_first_subscription_to_send_verification_email_to()
+        .await
+        .map_err(|_| SendNextVerificationEmailError::Unknown)
+        .log_error()?;
+
+    if let Some(s) = subscription {
+        let link = format!("{}/verify_email?code={}", hostname, s.verification_code);
+        let body = create_verification_email_body(&s.name, &link);
+
+        email_sender
+            // TODO: include blog name in subject
+            .send(
+                vec![s.email],
+                "Confirm your subscription".to_owned(),
+                s.id.to_string(),
+                body,
+            )
+            .await
+            .map_err(|_| SendNextVerificationEmailError::Unknown)
+            .log_error()?;
+
+        subscription_repository
+            .update_subscription_status(s.id, SubscriptionStatus::WaitingVerification)
+            .await
+            .map_err(|_| SendNextVerificationEmailError::Unknown)
+            .log_error()?;
+        Ok(SendNextVerificationEmailSuccess::Sent)
+    } else {
+        Ok(SendNextVerificationEmailSuccess::NoEmailsToSendVerificationTo)
+    }
 }

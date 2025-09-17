@@ -15,10 +15,11 @@ opentelemetry-otlp = { version = "0.30.0", features = ["grpc-tonic"] }
 opentelemetry_sdk = "0.30.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.23", features = ["json"] }
+resend-rs = "0.18.0"
 secrecy = { version = "0.10.3", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
-sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio"] }
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio", "uuid"] }
 thiserror = "2.0.16"
 tokio = { version = "1.47.1", features = ["rt-multi-thread"] }
 tower = "0.5.2"

@@ -8,11 +8,11 @@ use anyhow::{Context, Result};
 
 use crate::cross_cutting::{config::AppConfig, observability::init_observability};
 use crate::ports::{
-    driven::http::start_server,
+    driven::{http::start_server, worker::Worker},
     driving::{
         postgres_subscription_repository::PostgresSubscriptionRepository,
-        random_code_generator::RandomCodeGenerator, system_clock::SystemClock,
-        turnstile_token_validator::TurnstileTokenValidator,
+        random_code_generator::RandomCodeGenerator, resend_email_sender::ResendEmailSender,
+        system_clock::SystemClock, turnstile_token_validator::TurnstileTokenValidator,
     },
 };
 
@@ -27,6 +27,11 @@ async fn main() -> Result<()> {
 
     let code_generator = RandomCodeGenerator;
     let clock = SystemClock::new();
+    let email_sender = ResendEmailSender::new(
+        config.email.api_key,
+        config.email.from,
+        config.email.reply_to,
+    );
     let subscription_repository =
         PostgresSubscriptionRepository::new(config.database.connection_string)
             .await
@@ -34,6 +39,12 @@ async fn main() -> Result<()> {
     let token_validator =
         TurnstileTokenValidator::new(config.turnstile.route, config.turnstile.secret)
             .context("Failed to build Turnstile token validator.")?;
+
+    let worker = Worker::new(
+        email_sender,
+        subscription_repository.clone(),
+        config.server.hostname.clone(),
+    );
 
     let server = start_server(
         config.server,
@@ -44,6 +55,9 @@ async fn main() -> Result<()> {
         token_validator,
     )
     .await?;
+
+    tokio::spawn(async { worker.run().await });
+
     server.await;
 
     Ok(())

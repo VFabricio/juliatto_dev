@@ -39,6 +39,13 @@ pub struct DatabaseConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct EmailConfig {
+    pub api_key: SecretString,
+    pub from: String,
+    pub reply_to: String,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ObservabilityLevel {
     Trace,
@@ -69,6 +76,7 @@ impl AsRef<str> for ObservabilityLevel {
 #[derive(Debug, Deserialize)]
 pub struct ServerConfig {
     pub address: SocketAddr,
+    pub hostname: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -92,6 +100,7 @@ pub struct TurnstileConfig {
 #[derive(Deserialize)]
 pub struct AppConfig {
     pub database: DatabaseConfig,
+    pub email: EmailConfig,
     pub package: PackageConfig,
     pub observability: ObservabilityConfig,
     pub server: ServerConfig,

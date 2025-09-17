@@ -2,15 +2,17 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use sqlx::{PgPool, Type, postgres::PgPoolOptions, query};
 use tracing::{error, info, instrument};
+use uuid::Uuid;
 
 use crate::adapters::{
     Adapter,
     subscription_repository::{
-        SubscriptionRepository, SubscriptionRepositoryError, SubscriptionRepositorySuccess,
+        CreateSubscription, SubscriptionRepository, SubscriptionRepositoryError,
+        SubscriptionRepositorySuccess, SubscriptionToSendVerificationEmail,
     },
 };
 use crate::cross_cutting::error::LogError;
-use crate::domain::subscription::{Subscription, SubscriptionStatus};
+use crate::domain::subscription::SubscriptionStatus;
 
 #[derive(Clone, Debug)]
 pub struct PostgresSubscriptionRepository {
@@ -19,7 +21,7 @@ pub struct PostgresSubscriptionRepository {
 
 impl Adapter for PostgresSubscriptionRepository {}
 
-#[derive(Type)]
+#[derive(Debug, Type)]
 #[sqlx(type_name = "subscription_status")]
 #[sqlx(rename_all = "snake_case")]
 enum DbSubscriptionStatus {
@@ -78,13 +80,13 @@ impl SubscriptionRepository for PostgresSubscriptionRepository {
     #[instrument]
     async fn create(
         &self,
-        Subscription {
+        CreateSubscription {
             name,
             email,
             status,
             verification_code,
             unsubscription_code,
-        }: &Subscription,
+        }: &CreateSubscription,
     ) -> Result<SubscriptionRepositorySuccess, SubscriptionRepositoryError> {
         let status = DbSubscriptionStatus::from(*status);
 
@@ -96,5 +98,51 @@ impl SubscriptionRepository for PostgresSubscriptionRepository {
             verification_code,
             unsubscription_code
         ).execute(&self.pool).await.map_or_else(parse_error, |_| Ok(SubscriptionRepositorySuccess::Created)).log_error()
+    }
+
+    #[instrument]
+    async fn get_first_subscription_to_send_verification_email_to(
+        &self,
+    ) -> Result<Option<SubscriptionToSendVerificationEmail>, SubscriptionRepositoryError> {
+        let subscription = query!(
+            r#"SELECT id, email, name, verification_code FROM subscriptions WHERE status = 'send_verification_email' LIMIT 1;"#
+            ).fetch_optional(&self.pool).await.map_err(|e| {
+            error!(
+                database_error = %e,
+                "Failed to insert subscription into database."
+            );
+            SubscriptionRepositoryError::DatabaseError
+        }).log_error()?;
+
+        Ok(subscription.map(|s| SubscriptionToSendVerificationEmail {
+            id: s.id,
+            email: s.email,
+            name: s.name,
+            verification_code: s.verification_code,
+        }))
+    }
+
+    #[instrument]
+    async fn update_subscription_status(
+        &self,
+        id: Uuid,
+        status: SubscriptionStatus,
+    ) -> Result<(), SubscriptionRepositoryError> {
+        query!(
+            "UPDATE subscriptions SET status = $1 WHERE id = $2;",
+            DbSubscriptionStatus::from(status) as DbSubscriptionStatus,
+            id
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| {
+            error!(
+                database_error = %e,
+                "Failed to update subscription status in the database."
+            );
+            SubscriptionRepositoryError::DatabaseError
+        })
+        .map(|_| ())
+        .log_error()
     }
 }

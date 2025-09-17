@@ -73,6 +73,7 @@ impl TokenValidator for TurnstileTokenValidator {
         if !response.success {
             error!(
                 "error-codes" = response.error_codes.join(","),
+                "hostname" = response.hostname,
                 "Siteverify verification failed."
             );
             return Err(
