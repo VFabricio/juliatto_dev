@@ -1,5 +1,6 @@
 use thiserror::Error;
 use tracing::instrument;
+use url::Url;
 
 use crate::adapters::{
     code_generator::CodeGenerator,
@@ -94,15 +95,19 @@ pub async fn send_next_verification_email<E: EmailSender, R: SubscriptionReposit
         .log_error()?;
 
     if let Some(s) = subscription {
-        let link = format!("{}/verify_email?code={}", hostname, s.verification_code);
-        let body = create_verification_email_body(&s.name, &link);
+        let link = Url::parse_with_params(
+            &format!("{hostname}/verify_email"),
+            &[("email", s.email.clone()), ("code", s.verification_code)],
+        )
+        .expect("Link must be valid.");
+
+        let body = create_verification_email_body(&s.name, link.as_str());
 
         email_sender
-            // TODO: include blog name in subject
             .send(
                 vec![s.email],
-                "Confirm your subscription".to_owned(),
-                s.id.to_string(),
+                "Confirm your subscription to Fabricio Juliatto's blog".to_owned(),
+                format!("Email verification - {}", s.id),
                 body,
             )
             .await
