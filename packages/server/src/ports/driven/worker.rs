@@ -20,7 +20,7 @@ enum ProcessingResult {
     None,
 }
 
-const SECONDS_TO_WAIT_IF_EMPTY: u64 = 5;
+const SECONDS_TO_WAIT_IF_EMPTY: u64 = 30;
 const SECONDS_TO_WAIT_IF_ERROR: u64 = 30;
 
 impl<E: EmailSender, R: SubscriptionRepository> Worker<E, R> {
