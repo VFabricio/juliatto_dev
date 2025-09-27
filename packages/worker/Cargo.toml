@@ -5,5 +5,5 @@ edition.workspace = true
 
 [dependencies]
 anyhow = "1.0.99"
-core = { path = "../core" }
+lib = { path = "../lib" }
 tokio = { version = "1.47.1", features = ["rt-multi-thread"] }

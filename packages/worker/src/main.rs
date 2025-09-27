@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 
-use core::cross_cutting::{config::AppConfig, observability::init_observability};
-use core::ports::{
+use lib::cross_cutting::{config::AppConfig, observability::init_observability};
+use lib::ports::{
     driven::worker::Worker,
     driving::{
         postgres_subscription_repository::PostgresSubscriptionRepository,

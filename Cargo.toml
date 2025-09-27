@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "packages/builder",
-    "packages/core",
+    "packages/lib",
     "packages/sender",
     "packages/server",
     "packages/worker",
