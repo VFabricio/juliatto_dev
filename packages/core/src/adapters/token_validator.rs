@@ -12,7 +12,7 @@ pub enum ValidateTokenError {
 }
 
 #[async_trait]
-pub(crate) trait TokenValidator: Adapter {
+pub trait TokenValidator: Adapter {
     async fn validate_token<A: AsRef<str> + std::fmt::Debug + Send>(
         &self,
         token: A,

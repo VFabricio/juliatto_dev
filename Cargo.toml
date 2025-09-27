@@ -1,8 +1,10 @@
 [workspace]
 members = [
-    "packages/server",
     "packages/builder",
-    "packages/sender"
+    "packages/core",
+    "packages/sender",
+    "packages/server",
+    "packages/worker",
 ]
 resolver = "2"
 
