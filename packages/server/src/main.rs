@@ -31,6 +31,7 @@ async fn main() -> Result<()> {
         config.email.api_key,
         config.email.from,
         config.email.reply_to,
+        config.email.mode,
     );
     let subscription_repository =
         PostgresSubscriptionRepository::new(config.database.connection_string)

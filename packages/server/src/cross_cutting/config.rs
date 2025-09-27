@@ -38,11 +38,20 @@ pub struct DatabaseConfig {
     pub connection_string: String,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EmailMode {
+    Production,
+    TestDelivered,
+    TestBounced,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct EmailConfig {
     pub api_key: SecretString,
     pub from: String,
     pub reply_to: String,
+    pub mode: EmailMode,
 }
 
 #[derive(Debug, Deserialize)]
