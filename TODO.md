@@ -1,0 +1,2 @@
+- Create favicon
+- Configure DMARC
