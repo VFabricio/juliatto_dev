@@ -20,7 +20,7 @@ async fn main() -> Result<()> {
         .context("Failed to configure observability.")?;
 
     let code_generator = RandomCodeGenerator;
-    let clock = SystemClock::new();
+    let clock = SystemClock;
     let subscription_repository =
         PostgresSubscriptionRepository::new(config.database.connection_string)
             .await
